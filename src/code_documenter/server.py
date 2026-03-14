@@ -100,9 +100,7 @@ def scan_project(project_path: str) -> list[dict[str, str]]:
     return files
 
 async def call_claude(prompt: str, system: str) -> str:
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise ValueError("Missing ANTHROPIC_API_KEY environment variable")
+    api_key = os.environ.get("ANTHROPIC_API_KEY") or "YOUR-API-KEY"
     
     async with httpx.AsyncClient(timeout=120.0, verify=False) as client:
         response = await client.post(
