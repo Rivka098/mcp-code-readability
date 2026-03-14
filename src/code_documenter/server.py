@@ -8,6 +8,7 @@ from mcp.server.models import InitializationOptions
 import mcp.types as types
 from mcp.server import NotificationOptions, Server
 import mcp.server.stdio
+import httpx
 
 
 server = Server("code-documenter")
@@ -99,10 +100,11 @@ def scan_project(project_path: str) -> list[dict[str, str]]:
     return files
 
 async def call_claude(prompt: str, system: str) -> str:
-    import httpx
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise ValueError("Missing ANTHROPIC_API_KEY environment variable")
     
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with httpx.AsyncClient(timeout=120.0, verify=False) as client:
         response = await client.post(
             "https://api.anthropic.com/v1/messages",
             headers={
@@ -111,13 +113,14 @@ async def call_claude(prompt: str, system: str) -> str:
                 "content-type": "application/json",
             },
             json={
-                "model": "claude-opus-4-5",
+                "model": "claude-haiku-4-5-20251001",
                 "max_tokens": 8096,
                 "system": system,
                 "messages": [{"role": "user", "content": prompt}],
             },
         )
-        response.raise_for_status()
+        if response.status_code != 200:
+            raise ValueError(f"API error {response.status_code}: {response.text}")
         data = response.json()
         return data["content"][0]["text"]
 async def document_file(file_info: dict[str, str]) -> str:
